@@ -131,15 +131,15 @@ main {
 
         label {
           width: 100%;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+          display: grid;
+          grid-template-columns: 45% 55%;
 
           input {
             padding: 3px;
             border: solid 1px $charcoal;
             border-radius: 5px;
             margin: 1px;
+            font-size: calc(#{$font-size} / 1.2);
 
             &:focus {
               outline: none;
@@ -148,6 +148,17 @@ main {
             }
             &.error {
               border-color: red;
+            }
+          }
+
+          select {
+            font-size: calc(#{$font-size} / 1.2);
+            padding: 3px;
+            border: solid 1px $charcoal;
+            border-radius: 5px;
+
+            &:focus {
+              outline: none;
             }
           }
         }

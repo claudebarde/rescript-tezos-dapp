@@ -3,9 +3,10 @@ let make = (
         ~tezos: option<Taquito.t>,
         ~connect_wallet: () => promise<unit>,
         ~user_address: option<string>,
-        ~user_xtz_balance: option<int>
+        ~user_xtz_balance: option<int>,
+        ~set_user_xtz_balance: (option<int> => option<int>) => unit
     ) => {
-    let (active_tab, set_active_tab) = React.useState(() => "xtz")
+    let (active_tab, set_active_tab) = React.useState(() => "tokens")
 
     <main>
         <div className="container">
@@ -43,7 +44,7 @@ let make = (
                                 <div className="tab-selection">
                                     {
                                         if active_tab === "xtz" {
-                                            <Send_xtz user_xtz_balance tezos />
+                                            <Send_xtz user_xtz_balance tezos set_user_xtz_balance />
                                         } else if active_tab === "tokens" {
                                             <Send_tokens />
                                         } else {

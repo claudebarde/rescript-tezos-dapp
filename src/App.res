@@ -83,7 +83,13 @@ let make = () => {
 
   <>
     <Header tezos user_address user_xtz_balance disconnect_wallet />
-    <Body tezos connect_wallet user_address user_xtz_balance />
+    <Body 
+      tezos 
+      connect_wallet 
+      user_address 
+      user_xtz_balance 
+      set_user_xtz_balance
+    />
     <Footer />
   </>
 }

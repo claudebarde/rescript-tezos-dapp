@@ -11,8 +11,10 @@ module Operation = {
         @as("opHash") op_hash: string
     }
 
+    type status = [#pending | #applied | #unknown | #failed | #skipped | #backtracked]
+
     @send external confirmation: t => promise<unit> = "confirmation"
-    @send external status: t => promise<string> = "status" // pending, applied, unknown, failed, skipped, backtracked
+    @send external status: t => promise<status> = "status"
 }
 
 module Wallet = {

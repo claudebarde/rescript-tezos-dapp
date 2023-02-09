@@ -1,5 +1,10 @@
 type account_address = string
-
-module Transaction_status = {
-    type t  = Pending | Applied | Failed | Skipped | Backtracked | Unknown
+type fa1_2_token = {
+    address: string,
+    decimals: int
+}
+type fa2_token = {
+    address: string,
+    token_id: int,
+    decimals: int
 }

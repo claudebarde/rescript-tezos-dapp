@@ -1,60 +1,39 @@
 @react.component
 let make = (
         ~user_xtz_balance: option<int>,
-        ~tezos: option<Taquito.t>
+        ~tezos: option<Taquito.t>,
+        ~set_user_xtz_balance: (option<int> => option<int>) => unit
     ) => {
     let (amount, set_amount) = React.useState(() => None)
     let (recipient, set_recipient) = React.useState(() => None)
     let (balance_error, set_balance_error) = React.useState(() => false)
-    let (transaction_status, set_transaction_status) = React.useState(() => Tezos.Transaction_status.Unknown)
-
-    let update_amount = (amt: string) => {
-        let _ = set_balance_error(_ => false)
-        switch amt->Belt.Float.fromString {
-            | None => set_amount(_ => None)
-            | Some(amount) => {
-                if amount === 0.0 {
-                    set_amount(_ => None)
-                } else {
-                    switch user_xtz_balance {
-                        | None => set_amount(_ => None)
-                        | Some(balance) => 
-                            // displays error
-                            if balance->Belt.Int.toFloat < amount *. 1_000_000.0 {
-                                let _ = set_balance_error(_ => true)
-                            }
-                            set_amount(_ => (Some(amount)))
-                    }
-                }
-            }
-        }
-    }
+    let (transaction_status, set_transaction_status) = React.useState(() => #unknown)
 
     let transfer = async () => {
         open Taquito 
 
-        set_transaction_status(_ => Tezos.Transaction_status.Pending)
+        set_transaction_status(_ => #pending)
         switch (tezos, amount, recipient) {
             | (Some(tezos), Some(amount), Some(recipient)) => {
                 switch await (await tezos->wallet->Wallet.transfer({ to: recipient, amount }))->Wallet.send {
                     | op => {
                         let _ = await op->Operation.confirmation
-                        let status = await op->Operation.status
-                        if status === "applied" {
-                            set_transaction_status(_ => Tezos.Transaction_status.Applied)
-                            set_amount(_ => None)
-                            set_recipient(_ => None)
-                        } else if status === "skipped" {
-                            set_transaction_status(_ => Tezos.Transaction_status.Skipped)
-                        } else if status === "failed" {
-                            set_transaction_status(_ => Tezos.Transaction_status.Failed)
-                        } else if status === "backtracked" {
-                            set_transaction_status(_ => Tezos.Transaction_status.Backtracked)
-                        } else {
-                            set_transaction_status(_ => Tezos.Transaction_status.Unknown)
+                        switch await op->Operation.status {
+                            | #applied => {
+                                set_transaction_status(_ => #applied)
+                                set_amount(_ => None)
+                                set_recipient(_ => None)
+                                set_user_xtz_balance(prev => {
+                                    switch prev {
+                                        | None => None
+                                        | Some(prev_balance) => (prev_balance - (amount->Belt.Float.toInt * 1_000_000))->Some
+                                    }
+                                })
+                            }
+                            | status => set_transaction_status(_ => status)
                         }
 
-                        let _ = Js.Global.setTimeout(() => set_transaction_status(_ => Tezos.Transaction_status.Unknown), 2_000)
+                        let _ = Js.Global.setTimeout(() => set_transaction_status(_ => #unknown), 2_000)
 
                         ()
                     }
@@ -79,7 +58,14 @@ let make = (
                         | Some(amt) => amt->Belt.Float.toString
                     }
                 } 
-                onInput={event => update_amount((event->ReactEvent.Form.target)["value"])} 
+                onInput={
+                    event => {
+                        set_balance_error(_ => false)
+                        let (amt, has_error) = Utils.update_amount((event->ReactEvent.Form.target)["value"], user_xtz_balance)
+                        set_amount(_ => amt)
+                        set_balance_error(_ => has_error)
+                    }
+                }
             />
         </label>
         <label>
@@ -97,15 +83,15 @@ let make = (
         </label>
         <button 
             onClick={_ => transfer()->ignore}
-            disabled={transaction_status !== Tezos.Transaction_status.Unknown}
+            disabled={transaction_status !== #unknown}
         >
             {
                 switch transaction_status {
-                    | Pending => "Sending..."
-                    | Applied => "Transferred!"
-                    | Skipped => "Skipped"
-                    | Failed => "Failed!"
-                    | Backtracked => "Backtracked"
+                    | #pending => "Sending..."
+                    | #applied => "Transferred!"
+                    | #skipped => "Skipped"
+                    | #failed => "Failed!"
+                    | #backtracked => "Backtracked"
                     | _ => "Send"
                 }
                 ->React.string
