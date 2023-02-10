@@ -3,9 +3,23 @@ let make = () => {
     let (amount, set_amount) = React.useState(() => None)
     let (recipient, set_recipient) = React.useState(() => None)
     let (transaction_status, set_transaction_status) = React.useState(() => #unknown)
+    let (ctez_balance, set_ctez_balance) = React.useState(() => None)
+    let (kusd_balance, set_kusd_balance) = React.useState(() => None)
+    let (uusd_balance, set_uusd_balance) = React.useState(() => None)
 
-    let fetch_token_balance = async (token: string) => {
-        token->Js.log
+    let fetch_token_balance = async (token: string): promise<unit> => {
+        switch token {
+            | "ctez" if ctez_balance === None => {
+                Js.Promise.resolve(())
+            }
+            | "kusd" if kusd_balance === None => {
+                Js.Promise.resolve(())
+            }
+            | "uusd" if uusd_balance === None => {
+                Js.Promise.resolve(())
+            }
+            | _ => Js.Promise.reject(Js.Exn.raiseError("unknown token " ++ token))
+        }
     }
     
     <div className="send-tokens">

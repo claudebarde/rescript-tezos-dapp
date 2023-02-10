@@ -17,6 +17,22 @@ module Operation = {
     @send external status: t => promise<status> = "status"
 }
 
+module Big_map = {
+    type t
+
+    @send external get: (t, 'a) => 'b = "get"
+}
+
+module ContractStorage = {
+    type t
+}
+
+module ContractAbstraction = {
+    type t
+
+    @send external storage: t => ContractStorage.t = "storage"
+}
+
 module Wallet = {
     type t
     type transfer_operation
@@ -26,6 +42,7 @@ module Wallet = {
         amount: float
     }
 
+    @send external at: (t, Tezos.contract_address) => ContractAbstraction.t = "at"
     @send external transfer: (t, transfer_param) => promise<transfer_operation> = "transfer"
     @send external send: transfer_operation => promise<Operation.t> = "send"
 }
