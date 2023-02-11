@@ -46,7 +46,7 @@ let make = (
                                         if active_tab === "xtz" {
                                             <Send_xtz user_xtz_balance tezos set_user_xtz_balance />
                                         } else if active_tab === "tokens" {
-                                            <Send_tokens />
+                                            <Send_tokens tezos user_address />
                                         } else {
                                             React.null
                                         }

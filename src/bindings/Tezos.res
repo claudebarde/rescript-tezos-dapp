@@ -1,3 +1,7 @@
+open Types
+
+type t = tezos
+    
 type account_address = string
 type contract_address = string
 type fa1_2_token = {
@@ -11,10 +15,10 @@ type fa2_token = {
 }
 
 type fa1_2_storage = {
-    tokens: Taquito.Big_map.t,
-    total_supply: Big_number.t
+    tokens: big_map,
+    total_supply: Big_number.big_int
 }
 
 type fa2_storage = {
-    ledger: Taquito.Big_map.t,
+    ledger: big_map,
 }

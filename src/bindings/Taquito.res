@@ -1,4 +1,6 @@
-type t
+open Types
+
+type t = taquito
 
 module Tz = {
     type t
@@ -18,19 +20,15 @@ module Operation = {
 }
 
 module Big_map = {
-    type t
+    type t = big_map
 
-    @send external get: (t, 'a) => 'b = "get"
-}
-
-module ContractStorage = {
-    type t
+    @send external get: (t, 'a) => promise<Js.Nullable.t<'b>> = "get"
 }
 
 module ContractAbstraction = {
     type t
 
-    @send external storage: t => ContractStorage.t = "storage"
+    @send external storage: t => promise<'a> = "storage"
 }
 
 module Wallet = {
@@ -42,7 +40,7 @@ module Wallet = {
         amount: float
     }
 
-    @send external at: (t, Tezos.contract_address) => ContractAbstraction.t = "at"
+    @send external at: (t, Tezos.contract_address) => promise<ContractAbstraction.t> = "at"
     @send external transfer: (t, transfer_param) => promise<transfer_operation> = "transfer"
     @send external send: transfer_operation => promise<Operation.t> = "send"
 }

@@ -1,4 +1,6 @@
-type t
+open Types
+
+type t = beacon_wallet
 
 type wallet_options = {
     name: string,
@@ -18,14 +20,14 @@ type dapp_client
 
 type account_info = {
 //   accountIdentifier: AccountIdentifier
-  @as("senderId") sender_id: string,
+@as("senderId") sender_id: string,
 //   origin: {
 //     type: Origin
 //     id: string
 //   }
-  @as("publicKey") public_key: string,
-  address: Tezos.account_address,
-  @as("connectedAt") connected_at: float,
+@as("publicKey") public_key: string,
+address: Tezos.account_address,
+@as("connectedAt") connected_at: float,
 //   notification?: Notification
 }
 
