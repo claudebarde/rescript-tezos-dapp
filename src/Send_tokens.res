@@ -11,63 +11,106 @@ let make = (
     let (uusd_balance, set_uusd_balance) = React.useState(() => None)
 
     let fetch_token_balance = async (token: string): promise<unit> => {
-        switch token {
-            | "ctez" if ctez_balance === None => {
-                let balance = 
-                    switch tezos {
-                        | None => {
-                            Js.log("TezosToolkit hasn't been initialized")
+        switch (tezos, user_address, token) {
+        | (Some(tezos), Some(address), "ctez" | "kusd" | "uusd") => {
+            if token === "ctez" && ctez_balance === None {
+                let balance = {
+                    open Taquito
+                    open Wallet
+                    open ContractAbstraction
 
-                            None
-                        }
-                        | Some(tezos) => {
-                            open Taquito
-                            open Wallet
-                            open ContractAbstraction
-
-                            switch await (await tezos->wallet->at(Utils.ctez_address.address))->storage {
-                                | (storage: Tezos.fa1_2_storage) => {
-                                    switch user_address {
-                                    | None => {
-                                        Js.log("User address is unknown")
-
-                                        None
+                    switch await (await tezos->wallet->at(Utils.ctez_contract.address))->storage {
+                        | (storage: Tezos.fa1_2_storage) => {
+                            switch await storage.tokens->Big_map.get(address) {
+                                | (balance: Js.Nullable.t<Big_number.big_int>) => {
+                                    switch balance->Js.Nullable.toOption {
+                                        | None => None
+                                        | Some(blnc) => blnc->Big_number.to_int->Some
                                     }
-                                    | Some(address) => {
-                                        switch await storage.tokens->Big_map.get(address) {
-                                            | (balance: Js.Nullable.t<Big_number.big_int>) => {
-                                                switch balance->Js.Nullable.toOption {
-                                                    | None => None
-                                                    | Some(blnc) => blnc->Big_number.to_int->Some
-                                                }
-                                            }
-                                            | exception JsError(_) => {
-                                                let _ = Js.log("Unable to fetch the user's Ctez balance")
-
-                                                None
-                                            }
-                                        }
-                                    }
-                                }
                                 }
                                 | exception JsError(_) => {
-                                    Js.log("Unable to fetch the storage of the Ctez contract")
+                                    let _ = Js.log("Unable to fetch the user's Ctez balance")
 
                                     None
                                 }
                             }
                         }
+                        | exception JsError(_) => {
+                            Js.log("Unable to fetch the storage of the Ctez contract")
+
+                            None
+                        }
                     }
-                let _ = set_ctez_balance(_ => balance)
-                Js.Promise.resolve(())
+                }
+                set_ctez_balance(_ => balance)
+            } else if token === "kusd" && kusd_balance === None {
+                let balance = {
+                    open Taquito
+                    open Wallet
+                    open ContractAbstraction
+
+                    switch await (await tezos->wallet->at(Utils.kusd_contract.address))->storage {
+                        | (storage: Tezos.fa1_2_storage) => {
+                        switch await storage.tokens->Big_map.get(address) {
+                            | (balance: Js.Nullable.t<Big_number.big_int>) => {
+                                switch balance->Js.Nullable.toOption {
+                                    | None => None
+                                    | Some(blnc) => blnc->Big_number.to_int->Some
+                                }
+                            }
+                            | exception JsError(_) => {
+                                let _ = Js.log("Unable to fetch the user's kUSD balance")
+
+                                None
+                            }
+                        }
+                        }
+                        | exception JsError(_) => {
+                            Js.log("Unable to fetch the storage of the kUSD contract")
+
+                            None
+                        }
+                    }
+                }
+                set_kusd_balance(_ => balance)
+            } else if token === "uusd" && uusd_balance === None {
+                let balance = {
+                    open Taquito
+                    open Wallet
+                    open ContractAbstraction
+
+                    switch await (await tezos->wallet->at(Utils.uusd_contract.address))->storage {
+                        | (storage: Tezos.fa2_storage) => {
+                        let key = { "0": address, "1": Utils.uusd_contract.token_id }
+                        switch await storage.ledger->Big_map.get(key) {
+                            | (balance: Js.Nullable.t<Big_number.big_int>) => {
+                                switch balance->Js.Nullable.toOption {
+                                    | None => None
+                                    | Some(blnc) => blnc->Big_number.to_int->Some
+                                }
+                            }
+                            | exception JsError(_) => {
+                                let _ = Js.log("Unable to fetch the user's uUSD balance")
+
+                                None
+                            }
+                        }
+                        }
+                        | exception JsError(_) => {
+                            Js.log("Unable to fetch the storage of the uUSD contract")
+
+                            None
+                        }
+                    }
+                }
+                set_uusd_balance(_ => balance)
             }
-            | "kusd" if kusd_balance === None => {
-                Js.Promise.resolve()
-            }
-            | "uusd" if uusd_balance === None => {
-                Js.Promise.resolve(())
-            }
-            | _ => Js.Promise.reject(Js.Exn.raiseError("unknown token " ++ token))
+            
+            Js.Promise.resolve(())
+        }
+        | (Some(_), _, _) => Js.Promise.reject(Js.Exn.raiseError("Unknown token " ++ token))
+        | (_, None, _) => Js.Promise.reject(Js.Exn.raiseError("User address is unknown"))
+        | (None, _, _) => Js.Promise.reject(Js.Exn.raiseError("TezosToolkit hasn't been initialized"))
         }
     }
     
@@ -84,19 +127,28 @@ let make = (
                     {
                         switch ctez_balance {
                             | None => ""->React.string
-                            | Some(balance) => (
-                                "(" ++ 
-                                (
-                                    balance / Js.Math.pow_float(~base=10.0, ~exp=Utils.ctez_address.decimals->Belt.Int.toFloat)->Belt.Float.toInt
-                                )
-                                ->Belt.Int.toString ++ 
-                                ")"
-                            )->React.string
+                            | Some(balance) => ("(" ++ Utils.display_amount(balance, "ctez") ++ ")")->React.string
                         }
                     }
                 </option>
-                <option value="kusd">{"kUSD"->React.string}</option>
-                <option value="uusd">{"uUSD"->React.string}</option>
+                <option value="kusd">
+                    {"kUSD "->React.string}
+                    {
+                        switch kusd_balance {
+                            | None => ""->React.string
+                            | Some(balance) => ("(" ++ Utils.display_amount(balance, "kusd") ++ ")")->React.string
+                        }
+                    }
+                </option>
+                <option value="uusd">
+                    {"uUSD "->React.string}
+                    {
+                        switch uusd_balance {
+                            | None => ""->React.string
+                            | Some(balance) => ("(" ++ Utils.display_amount(balance, "uusd") ++ ")")->React.string
+                        }
+                    }
+                </option>
             </select>
         </label>
         <label>

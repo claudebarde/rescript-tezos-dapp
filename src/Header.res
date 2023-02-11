@@ -18,8 +18,16 @@ let make = (
         <div className="header__right-field">
             {
                 switch (user_address, user_xtz_balance) {
-                    | (Some(_), Some(balance)) => 
+                    | (Some(address), Some(balance)) => 
                         <>
+                            <div>{(
+                                "Account: " ++ 
+                                address->Js.String2.slice(~from=0, ~to_=4) 
+                                ++ "..." 
+                                ++ address->Js.String2.slice(~from=-4, ~to_=address->Js.String2.length)
+                                )
+                                ->React.string}
+                            </div>
                             <div>{("Balance: " ++ (balance / 1_000_000)->Belt.Int.toString ++ " XTZ")->React.string}</div>
                             <button 
                                 className="disconnect"
