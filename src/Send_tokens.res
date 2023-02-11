@@ -5,7 +5,9 @@ let make = (
     ) => {
     let (amount, set_amount) = React.useState(() => None)
     let (recipient, set_recipient) = React.useState(() => None)
+    let (balance_error, set_balance_error) = React.useState(() => false)
     let (transaction_status, set_transaction_status) = React.useState(() => #unknown)
+    let (selected_token, set_selected_token) = React.useState(() => None)
     let (ctez_balance, set_ctez_balance) = React.useState(() => None)
     let (kusd_balance, set_kusd_balance) = React.useState(() => None)
     let (uusd_balance, set_uusd_balance) = React.useState(() => None)
@@ -14,6 +16,7 @@ let make = (
         switch (tezos, user_address, token) {
         | (Some(tezos), Some(address), "ctez" | "kusd" | "uusd") => {
             if token === "ctez" && ctez_balance === None {
+                let _ = set_selected_token(_ => Some(token))
                 let balance = {
                     open Taquito
                     open Wallet
@@ -44,6 +47,7 @@ let make = (
                 }
                 set_ctez_balance(_ => balance)
             } else if token === "kusd" && kusd_balance === None {
+                let _ = set_selected_token(_ => Some(token))
                 let balance = {
                     open Taquito
                     open Wallet
@@ -74,6 +78,7 @@ let make = (
                 }
                 set_kusd_balance(_ => balance)
             } else if token === "uusd" && uusd_balance === None {
+                let _ = set_selected_token(_ => Some(token))
                 let balance = {
                     open Taquito
                     open Wallet
@@ -112,6 +117,10 @@ let make = (
         | (_, None, _) => Js.Promise.reject(Js.Exn.raiseError("User address is unknown"))
         | (None, _, _) => Js.Promise.reject(Js.Exn.raiseError("TezosToolkit hasn't been initialized"))
         }
+    }
+
+    let transfer = async () => {
+        Js.Promise.resolve(())
     }
     
     <div className="send-tokens">
@@ -155,21 +164,38 @@ let make = (
             <span>{"Amount:"->React.string}</span>
             <input 
                 type_="number"
-                // className={if balance_error { "error" } else { "" } }
-                // value={
-                //     switch amount {
-                //         | None => ""
-                //         | Some(amt) => amt->Belt.Float.toString
-                //     }
-                // } 
-                // onInput={
-                //     event => {
-                //         set_balance_error(_ => false)
-                //         let (amt, has_error) = Utils.update_amount((event->ReactEvent.Form.target)["value"], user_xtz_balance)
-                //         set_amount(_ => amt)
-                //         set_balance_error(_ => has_error)
-                //     }
-                // }
+                className={if balance_error { "error" } else { "" } }
+                value={
+                    switch amount {
+                        | None => ""
+                        | Some(amt) => amt->Belt.Float.toString
+                    }
+                } 
+                onInput={
+                    event => {
+                        set_balance_error(_ => false)
+                        let (amt, has_error) = {
+                            let balance = {
+                                switch selected_token {
+                                | None => None
+                                | Some(token) =>
+                                    if token === "ctez" {
+                                        ctez_balance
+                                    } else if token === "kusd" {
+                                        kusd_balance
+                                    } else if token === "uusd" {
+                                         uusd_balance
+                                    } else {
+                                        None
+                                    }
+                                }
+                            }
+                            Utils.update_amount((event->ReactEvent.Form.target)["value"], balance)
+                        }
+                        set_amount(_ => amt)
+                        set_balance_error(_ => has_error)
+                    }
+                }
             />
         </label>
         <label>
@@ -186,7 +212,7 @@ let make = (
             />
         </label>
         <button 
-            // onClick={_ => transfer()->ignore}
+            onClick={_ => transfer()->ignore}
             disabled={transaction_status !== #unknown}
         >
             {
