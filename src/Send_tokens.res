@@ -120,7 +120,47 @@ let make = (
     }
 
     let transfer = async () => {
-        Js.Promise.resolve(())
+        switch selected_token {
+        | None => Js.Promise.reject(Js.Exn.raiseError("No token is selected"))
+        | Some(token) => {
+            open Taquito
+            open Wallet
+            open ContractAbstraction
+
+            switch (tezos, amount, user_address, recipient) {
+                | (Some(tezos), Some(amt), Some(address), Some(recipient)) => {
+                    if token === "ctez" {
+                        switch ctez_balance {
+                            | None => Js.Promise.reject(Js.Exn.raiseError("No Ctez balance available"))
+                            | Some(balance) => {
+                                // checks that the amount is less than the user's balance
+                                if (amt *. Utils.ctez_contract.decimals->Belt.Int.toFloat) <= balance->Belt.Int.toFloat {
+                                    // prepares the operation
+                                    let contract = await tezos->wallet->at(Utils.ctez_contract.address)
+                                    let transfer = 
+                                        await contract
+                                        ->ctez_methods
+                                        ->Ctez_entrypoints.transfer(~from=address, ~to=recipient, ~value=amt->Belt.Float.toInt)
+                                        ->Contract_call.send(None)
+                                    transfer->Js.log
+
+                                    Js.Promise.resolve(())
+                                } else {
+                                    Js.Promise.reject(Js.Exn.raiseError("Amount is greater than user's balance"))
+                                }
+                            }
+                        }
+                    } else {
+                        Js.Promise.reject(Js.Exn.raiseError("Unhandled token"))
+                    }
+                }
+                | (None, _, _, _) => Js.Promise.reject(Js.Exn.raiseError("No TezosToolkit available"))
+                | (_, None, _, _) => Js.Promise.reject(Js.Exn.raiseError("No amount available"))
+                | (_, _, None, _) => Js.Promise.reject(Js.Exn.raiseError("No user address available"))
+                | (_, _, _, None) => Js.Promise.reject(Js.Exn.raiseError("No recipient address available"))
+            }
+        }
+        }
     }
     
     <div className="send-tokens">

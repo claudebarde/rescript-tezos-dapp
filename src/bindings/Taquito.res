@@ -10,7 +10,9 @@ module Tz = {
 
 module Operation = {
     type t = {
-        @as("opHash") op_hash: string
+        // TODO: "opHash" is for "transfer" operation, contract calls have "hash"
+        @as("opHash") op_hash: string,
+        hash: string
     }
 
     type status = [#pending | #applied | #unknown | #failed | #skipped | #backtracked]
@@ -28,6 +30,23 @@ module Big_map = {
 module ContractAbstraction = {
     type t
 
+    module Contract_call = {
+        type t = taquito_contract_call
+
+        type options_val = { amount: int, mutez: bool }
+        type options = option<options_val>
+
+        @send external send: (t, options) => promise<Operation.t> = "send"
+    }
+    
+    module Ctez_entrypoints = {
+        type t
+
+        @send external transfer: (t, ~from: Tezos.account_address, ~to: Tezos.account_address, ~value: int) => taquito_contract_call = "transfer"
+        @send external approve: (t, ~spender: Tezos.account_address, ~value: int) => taquito_contract_call = "approve"
+    }
+
+    @get external ctez_methods: t => Ctez_entrypoints.t = "methods"
     @send external storage: t => promise<'a> = "storage"
 }
 
@@ -39,6 +58,7 @@ module Wallet = {
         to: Tezos.account_address,
         amount: float
     }
+
 
     @send external at: (t, Tezos.contract_address) => promise<ContractAbstraction.t> = "at"
     @send external transfer: (t, transfer_param) => promise<transfer_operation> = "transfer"

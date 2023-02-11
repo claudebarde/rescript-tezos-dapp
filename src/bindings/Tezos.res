@@ -22,3 +22,8 @@ type fa1_2_storage = {
 type fa2_storage = {
     ledger: big_map,
 }
+
+type fa1_2_entrypoints = {
+    transfer: (~from: account_address, ~to: account_address, ~value: int) => promise<taquito_contract_call>,
+    approve: (~spender: account_address, ~value: int) => promise<taquito_contract_call>
+}
