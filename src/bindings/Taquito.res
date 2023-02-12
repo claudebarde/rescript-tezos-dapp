@@ -5,7 +5,7 @@ type t = taquito
 module Tz = {
     type t
 
-    @send external get_balance: (t, Tezos.account_address) => promise<Big_number.big_int> = "getBalance"
+    @send external get_balance: (t, Tezos.account_address) => promise<Big_number.big_float> = "getBalance"
 }
 
 module Operation = {
@@ -42,11 +42,26 @@ module ContractAbstraction = {
     module Ctez_entrypoints = {
         type t
 
-        @send external transfer: (t, ~from: Tezos.account_address, ~to: Tezos.account_address, ~value: int) => taquito_contract_call = "transfer"
+        @send external transfer: (t, ~from: Tezos.account_address, ~to: Tezos.account_address, ~value: float) => taquito_contract_call = "transfer"
         @send external approve: (t, ~spender: Tezos.account_address, ~value: int) => taquito_contract_call = "approve"
     }
 
+    module Kusd_entrypoints = {
+        type t
+
+        @send external transfer: (t, ~from: Tezos.account_address, ~to: Tezos.account_address, ~value: float) => taquito_contract_call = "transfer"
+        @send external approve: (t, ~spender: Tezos.account_address, ~value: int) => taquito_contract_call = "approve"
+    }
+
+    module Uusd_entrypoints = {
+        type t        
+
+        @send external transfer: (t, array<Tezos.fa2_transfer_param>) => taquito_contract_call = "transfer"
+    }
+
     @get external ctez_methods: t => Ctez_entrypoints.t = "methods"
+    @get external kusd_methods: t => Kusd_entrypoints.t = "methods"
+    @get external uusd_methods: t => Uusd_entrypoints.t = "methods"
     @send external storage: t => promise<'a> = "storage"
 }
 

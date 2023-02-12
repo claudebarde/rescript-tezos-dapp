@@ -30,7 +30,7 @@ let make = () => {
         // gets user's address
         let user_address = await beacon_wallet->Beacon_wallet.get_pkh
         // gets user's XTZ balance
-        let user_xtz_balance = (await tezos->Taquito.tz->Taquito.Tz.get_balance(user_address))->Big_number.to_int
+        let user_xtz_balance = (await tezos->Taquito.tz->Taquito.Tz.get_balance(user_address))->Big_number.to_float
 
         set_user_address(_ => user_address->Some)
         set_user_xtz_balance(_ => user_xtz_balance->Some)
@@ -64,7 +64,7 @@ let make = () => {
           | Some(account_info) => {
             let { address } = account_info
             // gets user's XTZ balance
-            let user_balance = (await tezos->Taquito.tz->Taquito.Tz.get_balance(address))->Big_number.to_int
+            let user_balance = (await tezos->Taquito.tz->Taquito.Tz.get_balance(address))->Big_number.to_float
 
             (Some(address), Some(user_balance))
           }

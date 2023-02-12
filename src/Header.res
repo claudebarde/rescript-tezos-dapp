@@ -2,7 +2,7 @@
 let make = (
         ~tezos: option<Taquito.t>, 
         ~user_address: option<Tezos.account_address>,
-        ~user_xtz_balance: option<int>,
+        ~user_xtz_balance: option<float>,
         ~disconnect_wallet: () => promise<unit>
     ) => {
     <header style={ReactDOM.Style.make(~display="flex", ~justifyContent="space-between", ~alignItems="center", ~padding="0px 50px", ())}>
@@ -28,7 +28,7 @@ let make = (
                                 )
                                 ->React.string}
                             </div>
-                            <div>{("Balance: " ++ (balance / 1_000_000)->Belt.Int.toString ++ " XTZ")->React.string}</div>
+                            <div>{("Balance: " ++ (balance /. 1_000_000.0)->Belt.Float.toString ++ " XTZ")->React.string}</div>
                             <button 
                                 className="disconnect"
                                 onClick={_ => disconnect_wallet()->ignore}

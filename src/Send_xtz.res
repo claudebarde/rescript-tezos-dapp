@@ -1,8 +1,8 @@
 @react.component
 let make = (
-        ~user_xtz_balance: option<int>,
+        ~user_xtz_balance: option<float>,
         ~tezos: option<Taquito.t>,
-        ~set_user_xtz_balance: (option<int> => option<int>) => unit
+        ~set_user_xtz_balance: (option<float> => option<float>) => unit
     ) => {
     let (amount, set_amount) = React.useState(() => None)
     let (recipient, set_recipient) = React.useState(() => None)
@@ -26,7 +26,7 @@ let make = (
                                 set_user_xtz_balance(prev => {
                                     switch prev {
                                         | None => None
-                                        | Some(prev_balance) => (prev_balance - (amount->Belt.Float.toInt * 1_000_000))->Some
+                                        | Some(prev_balance) => (prev_balance -. (amount *. 1_000_000.0))->Some
                                     }
                                 })
                             }

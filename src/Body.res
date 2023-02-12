@@ -3,8 +3,8 @@ let make = (
         ~tezos: option<Taquito.t>,
         ~connect_wallet: () => promise<unit>,
         ~user_address: option<string>,
-        ~user_xtz_balance: option<int>,
-        ~set_user_xtz_balance: (option<int> => option<int>) => unit
+        ~user_xtz_balance: option<float>,
+        ~set_user_xtz_balance: (option<float> => option<float>) => unit
     ) => {
     let (active_tab, set_active_tab) = React.useState(() => "tokens")
 

@@ -25,10 +25,10 @@ let make = (
                     switch await (await tezos->wallet->at(Utils.ctez_contract.address))->storage {
                         | (storage: Tezos.fa1_2_storage) => {
                             switch await storage.tokens->Big_map.get(address) {
-                                | (balance: Js.Nullable.t<Big_number.big_int>) => {
+                                | (balance: Js.Nullable.t<Big_number.big_float>) => {
                                     switch balance->Js.Nullable.toOption {
                                         | None => None
-                                        | Some(blnc) => blnc->Big_number.to_int->Some
+                                        | Some(blnc) => blnc->Big_number.to_float->Some
                                     }
                                 }
                                 | exception JsError(_) => {
@@ -56,10 +56,10 @@ let make = (
                     switch await (await tezos->wallet->at(Utils.kusd_contract.address))->storage {
                         | (storage: Tezos.fa1_2_storage) => {
                         switch await storage.tokens->Big_map.get(address) {
-                            | (balance: Js.Nullable.t<Big_number.big_int>) => {
+                            | (balance: Js.Nullable.t<Big_number.big_float>) => {
                                 switch balance->Js.Nullable.toOption {
                                     | None => None
-                                    | Some(blnc) => blnc->Big_number.to_int->Some
+                                    | Some(blnc) => blnc->Big_number.to_float->Some
                                 }
                             }
                             | exception JsError(_) => {
@@ -88,10 +88,10 @@ let make = (
                         | (storage: Tezos.fa2_storage) => {
                         let key = { "0": address, "1": Utils.uusd_contract.token_id }
                         switch await storage.ledger->Big_map.get(key) {
-                            | (balance: Js.Nullable.t<Big_number.big_int>) => {
+                            | (balance: Js.Nullable.t<Big_number.big_float>) => {
                                 switch balance->Js.Nullable.toOption {
                                     | None => None
-                                    | Some(blnc) => blnc->Big_number.to_int->Some
+                                    | Some(blnc) => blnc->Big_number.to_float->Some
                                 }
                             }
                             | exception JsError(_) => {
@@ -127,24 +127,166 @@ let make = (
             open Wallet
             open ContractAbstraction
 
+            set_transaction_status(_ => #pending)
+
             switch (tezos, amount, user_address, recipient) {
                 | (Some(tezos), Some(amt), Some(address), Some(recipient)) => {
-                    if token === "ctez" {
+                    let balance =
+                        switch token {
+                            | "ctez" => {
+                                switch ctez_balance {
+                                | None => Error("No Ctez balance available")
+                                | Some(blnc) => Ok(blnc)
+                                }
+                            }
+                            | "kusd" => {
+                                switch kusd_balance {
+                                | None => Error("No kUSD balance available")
+                                | Some(blnc) => Ok(blnc)
+                                }
+                            }
+                            | "uusd" => {
+                                switch uusd_balance {
+                                | None => Error("No uUSD balance available")
+                                | Some(blnc) => Ok(blnc)
+                                }
+                            }
+                            | _ => Error("Unknown token")
+                        }
+
+                    switch balance {
+                        | Error(err) => Js.Promise.reject(Js.Exn.raiseError(err))
+                        | Ok(balance) => {
+                            // checks that the amount is less than the user's balance
+                            let amount_ = Utils.amount_with_decimals(amt, token)
+                            if amount_ <= balance {
+                                let contract_call = 
+                                    switch token {
+                                        | "ctez" => {
+                                            let contract = await tezos->wallet->at(Utils.ctez_contract.address)
+                                            Ok(contract
+                                            ->ctez_methods
+                                            ->Ctez_entrypoints.transfer(~from=address, ~to=recipient, ~value=amount_))
+                                        }
+                                        | "kusd" => {
+                                            let contract = await tezos->wallet->at(Utils.kusd_contract.address)
+                                            Ok(contract
+                                            ->kusd_methods
+                                            ->Kusd_entrypoints.transfer(~from=address, ~to=recipient, ~value=amount_))
+                                        }
+                                        | "uusd" => {
+                                            let contract = await tezos->wallet->at(Utils.uusd_contract.address)
+                                            Ok(contract
+                                            ->uusd_methods
+                                            ->Uusd_entrypoints.transfer([
+                                                { 
+                                                    from_: address, 
+                                                    tx: [{ 
+                                                        to_: recipient, 
+                                                        token_id: Utils.uusd_contract.token_id, 
+                                                        quantity: amount_ 
+                                                    }] 
+                                                }
+                                            ]))
+                                        }
+                                        | _ => Error("Unknown token")
+                                    }
+
+                                switch contract_call {
+                                    | Error(err) => Js.Promise.reject(Js.Exn.raiseError(err))
+                                    | Ok(contract_call) => {
+                                        let op = await contract_call->Contract_call.send(None)
+                                        // waits for confirmation
+                                        let _ = await op->Operation.confirmation
+                                        // gets the operation status
+                                        switch await op->Operation.status {
+                                            | #applied => {
+                                                set_transaction_status(_ => #applied)
+                                                set_amount(_ => None)
+                                                set_recipient(_ => None)
+                                                let _ = switch token {
+                                                    | "ctez" => {
+                                                        set_ctez_balance(prev => {
+                                                            switch prev {
+                                                                | None => None
+                                                                | Some(prev_balance) => (prev_balance -. amount_)->Some
+                                                            }
+                                                        })
+                                                    }
+                                                    | "kusd" => {
+                                                        set_kusd_balance(prev => {
+                                                            switch prev {
+                                                                | None => None
+                                                                | Some(prev_balance) => (prev_balance -. amount_)->Some
+                                                            }
+                                                        })
+                                                    }
+                                                    | "uusd" => {
+                                                        set_uusd_balance(prev => {
+                                                            switch prev {
+                                                                | None => None
+                                                                | Some(prev_balance) => (prev_balance -. amount_)->Some
+                                                            }
+                                                        })
+                                                    }
+                                                    | _ => ()
+                                                }
+
+                                                let _ = Js.Global.setTimeout(() => set_transaction_status(_ => #unknown), 2_000)
+
+                                                Js.Promise.resolve(())
+                                            }
+                                            | status => {
+                                                set_transaction_status(_ => status)
+                                                Js.Promise.reject(Js.Exn.raiseError("Transaction was not applied, status: " ++ (status :> string)))
+                                            }
+                                        }  
+                                    }
+                                }
+                            } else {
+                                Js.Promise.reject(Js.Exn.raiseError("Amount is greater than user's balance"))
+                            }
+                        }
+                    }
+
+                    /* if token === "ctez" {
                         switch ctez_balance {
                             | None => Js.Promise.reject(Js.Exn.raiseError("No Ctez balance available"))
                             | Some(balance) => {
                                 // checks that the amount is less than the user's balance
-                                if (amt *. Utils.ctez_contract.decimals->Belt.Int.toFloat) <= balance->Belt.Int.toFloat {
+                                let amount_ = Utils.amount_with_decimals(amt, "ctez")
+                                if amount_ <= balance {
                                     // prepares the operation
                                     let contract = await tezos->wallet->at(Utils.ctez_contract.address)
-                                    let transfer = 
+                                    let op = 
                                         await contract
                                         ->ctez_methods
-                                        ->Ctez_entrypoints.transfer(~from=address, ~to=recipient, ~value=amt->Belt.Float.toInt)
+                                        ->Ctez_entrypoints.transfer(~from=address, ~to=recipient, ~value=amount_)
                                         ->Contract_call.send(None)
-                                    transfer->Js.log
+                                    // waits for confirmation
+                                    let _ = await op->Operation.confirmation
+                                    // gets the operation status
+                                    switch await op->Operation.status {
+                                    | #applied => {
+                                        set_transaction_status(_ => #applied)
+                                        set_amount(_ => None)
+                                        set_recipient(_ => None)
+                                        set_ctez_balance(prev => {
+                                            switch prev {
+                                                | None => None
+                                                | Some(prev_balance) => (prev_balance - amount_)->Some
+                                            }
+                                        })
 
-                                    Js.Promise.resolve(())
+                                        let _ = Js.Global.setTimeout(() => set_transaction_status(_ => #unknown), 2_000)
+
+                                        Js.Promise.resolve(())
+                                    }
+                                    | status => {
+                                        set_transaction_status(_ => status)
+                                        Js.Promise.reject(Js.Exn.raiseError("Transaction was not applied, status: " ++ (status :> string)))
+                                    }
+                                    }                                    
                                 } else {
                                     Js.Promise.reject(Js.Exn.raiseError("Amount is greater than user's balance"))
                                 }
@@ -152,7 +294,7 @@ let make = (
                         }
                     } else {
                         Js.Promise.reject(Js.Exn.raiseError("Unhandled token"))
-                    }
+                    } */
                 }
                 | (None, _, _, _) => Js.Promise.reject(Js.Exn.raiseError("No TezosToolkit available"))
                 | (_, None, _, _) => Js.Promise.reject(Js.Exn.raiseError("No amount available"))
