@@ -165,20 +165,20 @@ let make = (
                                         | "ctez" => {
                                             let contract = await tezos->wallet->at(Utils.ctez_contract.address)
                                             Ok(contract
-                                            ->ctez_methods
-                                            ->Ctez_entrypoints.transfer(~from=address, ~to=recipient, ~value=amount_))
+                                            ->fa1_2_methods
+                                            ->Fa1_2_entrypoints.transfer(~from=address, ~to=recipient, ~value=amount_))
                                         }
                                         | "kusd" => {
                                             let contract = await tezos->wallet->at(Utils.kusd_contract.address)
                                             Ok(contract
-                                            ->kusd_methods
-                                            ->Kusd_entrypoints.transfer(~from=address, ~to=recipient, ~value=amount_))
+                                            ->fa1_2_methods
+                                            ->Fa1_2_entrypoints.transfer(~from=address, ~to=recipient, ~value=amount_))
                                         }
                                         | "uusd" => {
                                             let contract = await tezos->wallet->at(Utils.uusd_contract.address)
                                             Ok(contract
-                                            ->uusd_methods
-                                            ->Uusd_entrypoints.transfer([
+                                            ->fa2_methods
+                                            ->Fa2_entrypoints.transfer([
                                                 { 
                                                     from_: address, 
                                                     tx: [{ 

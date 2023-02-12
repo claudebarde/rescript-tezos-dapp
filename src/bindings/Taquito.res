@@ -38,30 +38,22 @@ module ContractAbstraction = {
 
         @send external send: (t, options) => promise<Operation.t> = "send"
     }
-    
-    module Ctez_entrypoints = {
+
+    module Fa1_2_entrypoints = {
         type t
 
         @send external transfer: (t, ~from: Tezos.account_address, ~to: Tezos.account_address, ~value: float) => taquito_contract_call = "transfer"
         @send external approve: (t, ~spender: Tezos.account_address, ~value: int) => taquito_contract_call = "approve"
     }
 
-    module Kusd_entrypoints = {
-        type t
-
-        @send external transfer: (t, ~from: Tezos.account_address, ~to: Tezos.account_address, ~value: float) => taquito_contract_call = "transfer"
-        @send external approve: (t, ~spender: Tezos.account_address, ~value: int) => taquito_contract_call = "approve"
-    }
-
-    module Uusd_entrypoints = {
+    module Fa2_entrypoints = {
         type t        
 
         @send external transfer: (t, array<Tezos.fa2_transfer_param>) => taquito_contract_call = "transfer"
     }
 
-    @get external ctez_methods: t => Ctez_entrypoints.t = "methods"
-    @get external kusd_methods: t => Kusd_entrypoints.t = "methods"
-    @get external uusd_methods: t => Uusd_entrypoints.t = "methods"
+    @get external fa1_2_methods: t => Fa1_2_entrypoints.t = "methods"
+    @get external fa2_methods: t => Fa2_entrypoints.t = "methods"
     @send external storage: t => promise<'a> = "storage"
 }
 
