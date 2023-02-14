@@ -1,22 +1,67 @@
+type action = 
+| Amount(option<float>)
+| Recipient(option<Tezos.account_address>)
+| Balance_error(bool)
+| Transaction_status(Taquito.Operation.status)
+| Selected_token(option<string>)
+| Ctez_balance(option<float>)
+| Kusd_balance(option<float>)
+| Uusd_balance(option<float>)
+
+type state = {
+    amount: option<float>,
+    recipient: option<Tezos.account_address>,
+    balance_error: bool,
+    transaction_status: Taquito.Operation.status,
+    selected_token: option<string>,
+    ctez_balance: option<float>,
+    kusd_balance: option<float>,
+    uusd_balance: option<float>
+}
+
+let reducer = (state, action) => {
+    switch action {
+    | Amount(amount) => { ...state, amount }
+    | Recipient(recipient) => { ...state, recipient }
+    | Balance_error(err) => { ...state, balance_error: err }
+    | Transaction_status(status) => { ...state, transaction_status: status }
+    | Selected_token(selected_token) => { ...state, selected_token }
+    | Ctez_balance(ctez_balance) => { ...state, ctez_balance }
+    | Kusd_balance(kusd_balance) => { ...state, kusd_balance }
+    | Uusd_balance(uusd_balance) => { ...state, uusd_balance }
+    }
+}
+
 @react.component
 let make = (
         ~tezos: option<Taquito.t>,
         ~user_address: option<string>,
     ) => {
-    let (amount, set_amount) = React.useState(() => None)
-    let (recipient, set_recipient) = React.useState(() => None)
-    let (balance_error, set_balance_error) = React.useState(() => false)
-    let (transaction_status, set_transaction_status) = React.useState(() => #unknown)
-    let (selected_token, set_selected_token) = React.useState(() => None)
-    let (ctez_balance, set_ctez_balance) = React.useState(() => None)
-    let (kusd_balance, set_kusd_balance) = React.useState(() => None)
-    let (uusd_balance, set_uusd_balance) = React.useState(() => None)
+    // let (amount, set_amount) = React.useState(() => None)
+    // let (recipient, set_recipient) = React.useState(() => None)
+    // let (balance_error, set_balance_error) = React.useState(() => false)
+    // let (transaction_status, set_transaction_status) = React.useState(() => #unknown)
+    // let (selected_token, set_selected_token) = React.useState(() => None)
+    // let (ctez_balance, set_ctez_balance) = React.useState(() => None)
+    // let (kusd_balance, set_kusd_balance) = React.useState(() => None)
+    // let (uusd_balance, set_uusd_balance) = React.useState(() => None)
+    let initial_state: state = {
+        amount: None,
+        recipient: None,
+        balance_error: false,
+        transaction_status: #unknown,
+        selected_token: None,
+        ctez_balance: None,
+        kusd_balance: None,
+        uusd_balance: None
+    }
+    let (state, dispatch) = React.useReducer(reducer, initial_state)
 
     let fetch_token_balance = async (token: string): promise<unit> => {
         switch (tezos, user_address, token) {
         | (Some(tezos), Some(address), "ctez" | "kusd" | "uusd") => {
-            if token === "ctez" && ctez_balance === None {
-                let _ = set_selected_token(_ => Some(token))
+            if token === "ctez" && state.ctez_balance === None {
+                let _ = dispatch(Selected_token(Some(token)))
                 let balance = {
                     open Taquito
                     open Wallet
@@ -45,9 +90,9 @@ let make = (
                         }
                     }
                 }
-                set_ctez_balance(_ => balance)
-            } else if token === "kusd" && kusd_balance === None {
-                let _ = set_selected_token(_ => Some(token))
+                dispatch(Ctez_balance(balance))
+            } else if token === "kusd" && state.kusd_balance === None {
+                let _ = dispatch(Selected_token(Some(token)))
                 let balance = {
                     open Taquito
                     open Wallet
@@ -76,9 +121,9 @@ let make = (
                         }
                     }
                 }
-                set_kusd_balance(_ => balance)
-            } else if token === "uusd" && uusd_balance === None {
-                let _ = set_selected_token(_ => Some(token))
+                dispatch(Kusd_balance(balance))
+            } else if token === "uusd" && state.uusd_balance === None {
+                let _ = dispatch(Selected_token(Some(token)))
                 let balance = {
                     open Taquito
                     open Wallet
@@ -108,7 +153,7 @@ let make = (
                         }
                     }
                 }
-                set_uusd_balance(_ => balance)
+                dispatch(Uusd_balance(balance))
             }
             
             Js.Promise.resolve(())
@@ -120,33 +165,33 @@ let make = (
     }
 
     let transfer = async () => {
-        switch selected_token {
+        switch state.selected_token {
         | None => Js.Promise.reject(Js.Exn.raiseError("No token is selected"))
         | Some(token) => {
             open Taquito
             open Wallet
             open ContractAbstraction
 
-            set_transaction_status(_ => #pending)
+            #pending->Transaction_status->dispatch
 
-            switch (tezos, amount, user_address, recipient) {
+            switch (tezos, state.amount, user_address, state.recipient) {
                 | (Some(tezos), Some(amt), Some(address), Some(recipient)) => {
                     let balance =
                         switch token {
                             | "ctez" => {
-                                switch ctez_balance {
+                                switch state.ctez_balance {
                                 | None => Error("No Ctez balance available")
                                 | Some(blnc) => Ok(blnc)
                                 }
                             }
                             | "kusd" => {
-                                switch kusd_balance {
+                                switch state.kusd_balance {
                                 | None => Error("No kUSD balance available")
                                 | Some(blnc) => Ok(blnc)
                                 }
                             }
                             | "uusd" => {
-                                switch uusd_balance {
+                                switch state.uusd_balance {
                                 | None => Error("No uUSD balance available")
                                 | Some(blnc) => Ok(blnc)
                                 }
@@ -201,43 +246,43 @@ let make = (
                                         // gets the operation status
                                         switch await op->Operation.status {
                                             | #applied => {
-                                                set_transaction_status(_ => #applied)
-                                                set_amount(_ => None)
-                                                set_recipient(_ => None)
+                                                #applied->Transaction_status->dispatch
+                                                dispatch(Amount(None))
+                                                dispatch(Recipient(None))
                                                 let _ = switch token {
                                                     | "ctez" => {
-                                                        set_ctez_balance(prev => {
-                                                            switch prev {
-                                                                | None => None
-                                                                | Some(prev_balance) => (prev_balance -. amount_)->Some
-                                                            }
-                                                        })
+                                                        switch state.ctez_balance {
+                                                            | None => None
+                                                            | Some(prev_balance) => (prev_balance -. amount_)->Some
+                                                        }
+                                                        ->Ctez_balance
+                                                        ->dispatch
                                                     }
                                                     | "kusd" => {
-                                                        set_kusd_balance(prev => {
-                                                            switch prev {
-                                                                | None => None
-                                                                | Some(prev_balance) => (prev_balance -. amount_)->Some
-                                                            }
-                                                        })
+                                                        switch state.kusd_balance {
+                                                            | None => None
+                                                            | Some(prev_balance) => (prev_balance -. amount_)->Some
+                                                        }
+                                                        ->Kusd_balance
+                                                        ->dispatch
                                                     }
                                                     | "uusd" => {
-                                                        set_uusd_balance(prev => {
-                                                            switch prev {
-                                                                | None => None
-                                                                | Some(prev_balance) => (prev_balance -. amount_)->Some
-                                                            }
-                                                        })
+                                                        switch state.uusd_balance {
+                                                            | None => None
+                                                            | Some(prev_balance) => (prev_balance -. amount_)->Some
+                                                        }
+                                                        ->Uusd_balance
+                                                        ->dispatch
                                                     }
                                                     | _ => ()
                                                 }
 
-                                                let _ = Js.Global.setTimeout(() => set_transaction_status(_ => #unknown), 2_000)
+                                                let _ = Js.Global.setTimeout(() => #unknown->Transaction_status->dispatch, 2_000)
 
                                                 Js.Promise.resolve(())
                                             }
                                             | status => {
-                                                set_transaction_status(_ => status)
+                                                status->Transaction_status->dispatch
                                                 Js.Promise.reject(Js.Exn.raiseError("Transaction was not applied, status: " ++ (status :> string)))
                                             }
                                         }  
@@ -316,7 +361,7 @@ let make = (
                 <option value="ctez">
                     {"Ctez "->React.string}
                     {
-                        switch ctez_balance {
+                        switch state.ctez_balance {
                             | None => ""->React.string
                             | Some(balance) => ("(" ++ Utils.display_amount(balance, "ctez") ++ ")")->React.string
                         }
@@ -325,7 +370,7 @@ let make = (
                 <option value="kusd">
                     {"kUSD "->React.string}
                     {
-                        switch kusd_balance {
+                        switch state.kusd_balance {
                             | None => ""->React.string
                             | Some(balance) => ("(" ++ Utils.display_amount(balance, "kusd") ++ ")")->React.string
                         }
@@ -334,7 +379,7 @@ let make = (
                 <option value="uusd">
                     {"uUSD "->React.string}
                     {
-                        switch uusd_balance {
+                        switch state.uusd_balance {
                             | None => ""->React.string
                             | Some(balance) => ("(" ++ Utils.display_amount(balance, "uusd") ++ ")")->React.string
                         }
@@ -346,27 +391,27 @@ let make = (
             <span>{"Amount:"->React.string}</span>
             <input 
                 type_="number"
-                className={if balance_error { "error" } else { "" } }
+                className={if state.balance_error { "error" } else { "" } }
                 value={
-                    switch amount {
+                    switch state.amount {
                         | None => ""
                         | Some(amt) => amt->Belt.Float.toString
                     }
                 } 
                 onInput={
                     event => {
-                        set_balance_error(_ => false)
+                        dispatch(Balance_error(false))
                         let (amt, has_error) = {
                             let balance = {
-                                switch selected_token {
+                                switch state.selected_token {
                                 | None => None
                                 | Some(token) =>
                                     if token === "ctez" {
-                                        ctez_balance
+                                        state.ctez_balance
                                     } else if token === "kusd" {
-                                        kusd_balance
+                                        state.kusd_balance
                                     } else if token === "uusd" {
-                                         uusd_balance
+                                         state.uusd_balance
                                     } else {
                                         None
                                     }
@@ -374,8 +419,8 @@ let make = (
                             }
                             Utils.update_amount((event->ReactEvent.Form.target)["value"], balance)
                         }
-                        set_amount(_ => amt)
-                        set_balance_error(_ => has_error)
+                        amt->Amount->dispatch
+                        dispatch(Balance_error(has_error))
                     }
                 }
             />
@@ -385,20 +430,20 @@ let make = (
             <input
                 type_="text"
                 value={
-                    switch recipient {
+                    switch state.recipient {
                         | None => ""
                         | Some(r) => r
                     }
                 } 
-                onInput={event => set_recipient(_ => (event->ReactEvent.Form.target)["value"]->Some)} 
+                onInput={event => (event->ReactEvent.Form.target)["value"]->Some->Recipient->dispatch} 
             />
         </label>
         <button 
             onClick={_ => transfer()->ignore}
-            disabled={transaction_status !== #unknown}
+            disabled={state.transaction_status !== #unknown}
         >
             {
-                switch transaction_status {
+                switch state.transaction_status {
                     | #pending => "Sending..."
                     | #applied => "Transferred!"
                     | #skipped => "Skipped"
