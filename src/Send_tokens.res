@@ -37,14 +37,6 @@ let make = (
         ~tezos: option<Taquito.t>,
         ~user_address: option<string>,
     ) => {
-    // let (amount, set_amount) = React.useState(() => None)
-    // let (recipient, set_recipient) = React.useState(() => None)
-    // let (balance_error, set_balance_error) = React.useState(() => false)
-    // let (transaction_status, set_transaction_status) = React.useState(() => #unknown)
-    // let (selected_token, set_selected_token) = React.useState(() => None)
-    // let (ctez_balance, set_ctez_balance) = React.useState(() => None)
-    // let (kusd_balance, set_kusd_balance) = React.useState(() => None)
-    // let (uusd_balance, set_uusd_balance) = React.useState(() => None)
     let initial_state: state = {
         amount: None,
         recipient: None,
@@ -293,53 +285,6 @@ let make = (
                             }
                         }
                     }
-
-                    /* if token === "ctez" {
-                        switch ctez_balance {
-                            | None => Js.Promise.reject(Js.Exn.raiseError("No Ctez balance available"))
-                            | Some(balance) => {
-                                // checks that the amount is less than the user's balance
-                                let amount_ = Utils.amount_with_decimals(amt, "ctez")
-                                if amount_ <= balance {
-                                    // prepares the operation
-                                    let contract = await tezos->wallet->at(Utils.ctez_contract.address)
-                                    let op = 
-                                        await contract
-                                        ->ctez_methods
-                                        ->Ctez_entrypoints.transfer(~from=address, ~to=recipient, ~value=amount_)
-                                        ->Contract_call.send(None)
-                                    // waits for confirmation
-                                    let _ = await op->Operation.confirmation
-                                    // gets the operation status
-                                    switch await op->Operation.status {
-                                    | #applied => {
-                                        set_transaction_status(_ => #applied)
-                                        set_amount(_ => None)
-                                        set_recipient(_ => None)
-                                        set_ctez_balance(prev => {
-                                            switch prev {
-                                                | None => None
-                                                | Some(prev_balance) => (prev_balance - amount_)->Some
-                                            }
-                                        })
-
-                                        let _ = Js.Global.setTimeout(() => set_transaction_status(_ => #unknown), 2_000)
-
-                                        Js.Promise.resolve(())
-                                    }
-                                    | status => {
-                                        set_transaction_status(_ => status)
-                                        Js.Promise.reject(Js.Exn.raiseError("Transaction was not applied, status: " ++ (status :> string)))
-                                    }
-                                    }                                    
-                                } else {
-                                    Js.Promise.reject(Js.Exn.raiseError("Amount is greater than user's balance"))
-                                }
-                            }
-                        }
-                    } else {
-                        Js.Promise.reject(Js.Exn.raiseError("Unhandled token"))
-                    } */
                 }
                 | (None, _, _, _) => Js.Promise.reject(Js.Exn.raiseError("No TezosToolkit available"))
                 | (_, None, _, _) => Js.Promise.reject(Js.Exn.raiseError("No amount available"))
